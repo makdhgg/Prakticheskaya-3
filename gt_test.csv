@@ -1,0 +1,8 @@
+load,100
+load,20
+load,10
+gt,0
+load,101
+load,5
+load,15
+gt,0

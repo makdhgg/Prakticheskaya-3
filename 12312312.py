@@ -86,7 +86,6 @@ def encode_gt(offset_val: int) -> int:
 
     return cmd_int  # идея из файла преподавателя: возврат целого числа, представляющего команду
 
-
 def parse_csv_row(row):
     """Парсит одну строку CSV."""
     if not row or not any(field.strip() for field in row):  # Пропускаем пустые строки
@@ -100,6 +99,10 @@ def parse_csv_row(row):
                 args.append(int(arg.strip()))
     except ValueError:
         raise ValueError(f"Неверный формат аргумента в строке: {row}")
+
+    # Проверяем, поддерживаем ли мы эту команду
+    if op not in {"load", "read", "write", "gt"}: # Добавляем "gt" в список поддерживаемых
+        raise ValueError(f"Неизвестная команда в строке: {row}")
 
     return {"op": op, "args": args}
 
@@ -123,7 +126,6 @@ def assemble_from_csv(csv_filename: str):
 
     return intermediate_repr  # идея из файла преподавателя: возврат внутреннего представления программы
 
-
 def run_tests():
     """Проверяет правильность кодирования команд по тестовым векторам."""
     print("--- Запуск тестов ---")  # Переведено
@@ -131,28 +133,32 @@ def run_tests():
         # Тесты из спецификации
         test_load_int = encode_load(267)
         expected_load_bytes = bytes([0xB1, 0x10, 0x00])
-        generated_load_bytes = test_load_int.to_bytes(3, "little")  # идея из файла преподавателя: преобразование числа в байты
+        generated_load_bytes = test_load_int.to_bytes(3,
+                                                      "little")  # идея из файла преподавателя: преобразование числа в байты
         assert generated_load_bytes == expected_load_bytes, \
             f"Тест Load не пройден: получено {list(generated_load_bytes)}, ожидалось {list(expected_load_bytes)}"
         print(f"Load(267) тест пройден: {list(generated_load_bytes)}")
 
         test_read_int = encode_read(34)
         expected_read_bytes = bytes([0x2F, 0x02, 0x00])
-        generated_read_bytes = test_read_int.to_bytes(3, "little")  # идея из файла преподавателя: преобразование числа в байты
+        generated_read_bytes = test_read_int.to_bytes(3,
+                                                      "little")  # идея из файла преподавателя: преобразование числа в байты
         assert generated_read_bytes == expected_read_bytes, \
             f"Тест Read не пройден: получено {list(generated_read_bytes)}, ожидалось {list(expected_read_bytes)}"
         print(f"Read(34) тест пройден: {list(generated_read_bytes)}")
 
         test_write_int = encode_write()
         expected_write_bytes = bytes([0x03, 0x00, 0x00])
-        generated_write_bytes = test_write_int.to_bytes(3, "little")  # идея из файла преподавателя: преобразование числа в байты
+        generated_write_bytes = test_write_int.to_bytes(3,
+                                                        "little")  # идея из файла преподавателя: преобразование числа в байты
         assert generated_write_bytes == expected_write_bytes, \
             f"Тест Write не пройден: получено {list(generated_write_bytes)}, ожидалось {list(expected_write_bytes)}"
         print(f"Write() тест пройден: {list(generated_write_bytes)}")
 
         test_gt_int = encode_gt(27)
         expected_gt_bytes = bytes([0xB5, 0x01, 0x00])
-        generated_gt_bytes = test_gt_int.to_bytes(3, "little")  # идея из файла преподавателя: преобразование числа в байты
+        generated_gt_bytes = test_gt_int.to_bytes(3,
+                                                  "little")  # идея из файла преподавателя: преобразование числа в байты
         assert generated_gt_bytes == expected_gt_bytes, \
             f"Тест Gt не пройден: получено {list(generated_gt_bytes)}, ожидалось {list(expected_gt_bytes)}"
         print(f"Gt(27) тест пройден: {list(generated_gt_bytes)}")
@@ -168,6 +174,33 @@ def run_tests():
         return False
 
 
+def display_intermediate_fields(interp_program):
+    """Отображает внутреннее представление как поля и значения, как в тестах."""
+    print("\n--- Внутреннее представление (Поля и Значения, Тестовый режим) ---")  # Переведено
+    for instr in interp_program:
+        op = instr["op"]
+        args = instr["args"]
+
+        print(f"Op: {op}")
+        if op == "load":
+            # A=1 (из спецификации), B=args[0]
+            print(f"  A: 1 (4 bits)")
+            print(f"  B: {args[0]} (18 bits)")
+        elif op == "read":
+            # A=15 (из спецификации), B=args[0]
+            print(f"  A: 15 (4 bits)")
+            print(f"  B: {args[0]} (6 bits)")
+        elif op == "write":
+            # A=3 (из спецификации)
+            print(f"  A: 3 (4 bits)")
+        elif op == "gt":
+            # A=5 (из спецификации), B=args[0]
+            print(f"  A: 5 (4 bits)")
+            print(f"  B: {args[0]} (6 bits)")
+        else:
+            print(f"  Unknown op: {op}")
+
+
 def translate_to_machine_code_bytes(intermediate_program):
     """
     Преобразует список команд из промежуточного представления в бинарный код.
@@ -180,34 +213,39 @@ def translate_to_machine_code_bytes(intermediate_program):
         if op == "load":
             if len(args) != 1:
                 raise ValueError(f"Команда 'load' ожидает 1 аргумент, получено {len(args)}")
-            bytecode += encode_load(args[0]).to_bytes(3, "little")  # идея из файла преподавателя: вызов функции кодирования и добавление к результату
+            bytecode += encode_load(args[0]).to_bytes(3,
+                                                      "little")  # идея из файла преподавателя: вызов функции кодирования и добавление к результату
         elif op == "read":
             if len(args) != 1:
                 raise ValueError(f"Команда 'read' ожидает 1 аргумент, получено {len(args)}")
-            bytecode += encode_read(args[0]).to_bytes(3, "little")  # идея из файла преподавателя: вызов функции кодирования и добавление к результату
+            bytecode += encode_read(args[0]).to_bytes(3,
+                                                      "little")  # идея из файла преподавателя: вызов функции кодирования и добавление к результату
         elif op == "write":
             if len(args) != 0:
                 raise ValueError(f"Команда 'write' ожидает 0 аргументов, получено {len(args)}")
-            bytecode += encode_write().to_bytes(3, "little")  # идея из файла преподавателя: вызов функции кодирования и добавление к результату
-        elif op == "gt":
+            bytecode += encode_write().to_bytes(3,
+                                                "little")  # идея из файла преподавателя: вызов функции кодирования и добавление к результату
+        elif op == "gt": # <-- Добавленная ветка для gt
             if len(args) != 1:
                 raise ValueError(f"Команда 'gt' ожидает 1 аргумент, получено {len(args)}")
-            bytecode += encode_gt(args[0]).to_bytes(3, "little")  # идея из файла преподавателя: вызов функции кодирования и добавление к результату
+            bytecode += encode_gt(args[0]).to_bytes(3,
+                                                    "little")  # идея из файла преподавателя: вызов функции кодирования и добавление к результату
         else:
             raise ValueError(f"Неизвестная команда: {op}")
 
     return bytecode  # идея из файла преподавателя: возврат собранного байтового объекта
 
 def main():
-    parser = argparse.ArgumentParser(description="Ассемблер для УВМ Вариант 20 (Этап 2).")
+    parser = argparse.ArgumentParser(description="Ассемблер для УВМ Вариант 20.")
     parser.add_argument("input_file", help="Путь к исходному CSV файлу с ассемблерным кодом (.csv)")
     parser.add_argument("output_file", help="Путь к выходному бинарному файлу (.bin)")
-    parser.add_argument("--test-mode", action="store_true", help="Запустить внутренние тесты и показать сгенерированный байткод.")
+    parser.add_argument("--test-mode", action="store_true",
+                        help="Запустить внутренние тесты и показать промежуточное представление / байткод.")
 
     args = parser.parse_args()
 
     if args.test_mode:
-        # Запуск тестов кодирования (Требование 4 & 6)
+        # Запуск тестов кодирования
         if not run_tests():
             sys.exit(1)  # Если тесты не прошли, завершаем
 
@@ -215,23 +253,16 @@ def main():
         try:
             intermediate_program = assemble_from_csv(args.input_file)
 
-            # Генерация байткода (Требование 1)
+            # Вывод внутреннего представления (поля и значения) - Требование Этапа 1
+            display_intermediate_fields(intermediate_program)
+
+            # Генерация и вывод байткода - Также полезно для проверки на Этапе 1
             bytecode = translate_to_machine_code_bytes(intermediate_program)
 
-            # Вывод байткода в тестовом режиме (Требование 4)
             print("\n--- Сгенерированный байткод (Тестовый режим) ---")  # Переведено
-            print(" ".join([f"0x{b:02X}" for b in bytecode]))  # идея из файла преподавателя: вывод байтов в шестнадцатеричном формате, как в тесте из спецификации УВМ
+            print(" ".join([f"0x{b:02X}" for b in
+                            bytecode]))  # идея из файла преподавателя: вывод байтов в шестнадцатеричном формате
             print(f"Длина байткода: {len(bytecode)} байт")  # идея из файла преподавателя: вывод размера результата
-            print(f"Количество ассемблированных команд: {len(intermediate_program)}")  # Требование 3
-
-            # Проверка соответствия тестовому байтовому коду (Требование 5 & 6)
-            expected_full_test_code = bytes([0xB1, 0x10, 0x00, 0x2F, 0x02, 0x00, 0x03, 0x00, 0x00, 0xB5, 0x01, 0x00])
-            if bytecode == expected_full_test_code:
-                print("\n*** Тест полной последовательности (load->read->write->gt) ПРОЙДЕН! Соответствует тестовым векторам. ***")
-            else:
-                print("\n*** Тест полной последовательности НЕ ПРОЙДЕН! ***")
-                print(f"Ожидалось: {[hex(b) for b in expected_full_test_code]}")
-                print(f"Получено:  {[hex(b) for b in bytecode]}")
 
         except FileNotFoundError:
             print(f"Входной CSV файл {args.input_file} не найден.")
@@ -241,17 +272,20 @@ def main():
             sys.exit(1)
 
     else:
-        # Обычная сборка (Требования 1, 2)
+        # Обычная сборка
         try:
             intermediate_program = assemble_from_csv(args.input_file)
-            bytecode = translate_to_machine_code_bytes(intermediate_program)  # идея из файла преподавателя: вызов функции генерации байтов
+            bytecode = translate_to_machine_code_bytes(
+                intermediate_program)  # идея из файла преподавателя: вызов функции генерации байтов
 
             with open(args.output_file, 'wb') as f:
                 f.write(bytecode)  # идея из файла преподавателя: запись результата в бинарный файл
 
             print(f"Ассемблировано {args.input_file} -> {args.output_file}")
-            print(f"Количество ассемблированных команд: {len(intermediate_program)}")  # Требование 3
-            print(f"Размер бинарного файла: {len(bytecode)} байт")  # идея из файла преподавателя: вывод размера результата
+            print(
+                f"Количество ассемблированных команд: {len(intermediate_program)}")  # Требование Этап 2, но логично выводить
+            print(
+                f"Размер бинарного файла: {len(bytecode)} байт")  # идея из файла преподавателя: вывод размера результата
 
         except FileNotFoundError:
             print(f"Ошибка: Входной файл '{args.input_file}' не найден.")

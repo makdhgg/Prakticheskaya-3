@@ -2,14 +2,9 @@ import sys
 import argparse
 import json
 
-# --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
-
 def mask(n):
     """Возвращает маску из n единиц (2^n - 1).""" # идея из файла преподавателя: создание битовой маски
     return (1 << n) - 1
-
-
-# --- МОДЕЛЬ ВИРТУАЛЬНОЙ МАШИНЫ ---
 
 MEMORY_SIZE = 1024
 INITIAL_MEMORY_VALUE = 0
@@ -35,29 +30,26 @@ class UVM:
         if 0 <= address < len(self.memory):
             return self.memory[address] # идея из файла преподавателя: операции с памятью
         else:
-            print(f"Warning: Reading from out-of-bounds address {address}")
+            print(f"Предупреждение: Чтение из недопустимого адреса памяти {address}")
             return 0
 
     def write_memory(self, address, value):
         if 0 <= address < len(self.memory):
             self.memory[address] = value # идея из файла преподавателя: операции с памятью
         else:
-            print(f"Error: Writing to out-of-bounds address {address}")
-
-
-# --- ВЫПОЛНЕНИЕ БАЙТКОДА ---
+            print(f"Ошибка: Запись в недопустимый адрес памяти {address}")
 
 def execute(bytecode, vm_instance): # идея из файла преподавателя: функция execute
     """
     Выполняет байткод на виртуальной машине.
     """
     pc = 0 # идея из файла преподавателя: счётчик команд
-    print("Starting interpretation loop...")
+    print("Запуск цикла интерпретации...")
 
     while pc < len(bytecode): # идея из файла преподавателя: цикл по байткоду
         # --- ЧТЕНИЕ КОМАНДЫ ---
         if pc + 2 >= len(bytecode):
-            print(f"Warning: Reached end of bytecode at PC {pc}, stopping.")
+            print(f"Предупреждение: Достигнут конец байткода на PC {pc}, остановка.")
             break
 
         cmd_bytes = bytecode[pc:pc+3] # идея из файла преподавателя: чтение байтов команды
@@ -71,12 +63,11 @@ def execute(bytecode, vm_instance): # идея из файла преподав�
         # B_OFFSET используется для read (6 бит) и gt (6 бит)
         B_OFFSET = (cmd_int >> 4) & mask(6) # идея из файла преподавателя: сдвиг и извлечение битов
 
-        # --- ВЫПОЛНЕНИЕ КОМАНД ---
         # Вариант 20: A=1 (load), A=15 (read), A=3 (write), A=5 (gt)
         if A_OPCODE == 1: # load: A=1, B=const_val (18 бит)
             const_val = B_VALUE
             vm_instance.push(const_val) # идея из файла преподавателя: операции с памятью/регистром/стеком
-            print(f"PC: {pc}, Executed: load {const_val}. Stack: {vm_instance.stack}")
+            print(f"PC: {pc}, Выполнена: load {const_val}. Стек: {vm_instance.stack}")
             pc += 3
         elif A_OPCODE == 15: # read: A=15, B=offset_val (6 бит)
             offset_val = B_OFFSET
@@ -84,13 +75,13 @@ def execute(bytecode, vm_instance): # идея из файла преподав�
             effective_addr = addr + offset_val
             value = vm_instance.read_memory(effective_addr) # идея из файла преподавателя: операции с памятью/регистром/стеком
             vm_instance.push(value) # идея из файла преподавателя: операции с памятью/регистром/стеком
-            print(f"PC: {pc}, Executed: read {offset_val}. Address: {addr}, Offset: {offset_val}, Effective: {effective_addr}, Value: {value}. Stack: {vm_instance.stack}")
+            print(f"PC: {pc}, Выполнена: read {offset_val}. Адрес: {addr}, Смещение: {offset_val}, Эфф. адрес: {effective_addr}, Значение: {value}. Стек: {vm_instance.stack}")
             pc += 3
         elif A_OPCODE == 3: # write: A=3
             value = vm_instance.pop() # идея из файла преподавателя: операции с памятью/регистром/стеком
             addr = vm_instance.pop() # идея из файла преподавателя: операции с памятью/регистром/стеком
             vm_instance.write_memory(addr, value) # идея из файла преподавателя: операции с памятью/регистром/стеком
-            print(f"PC: {pc}, Executed: write. Address: {addr}, Value: {value}. Stack: {vm_instance.stack}")
+            print(f"PC: {pc}, Выполнена: write. Адрес: {addr}, Значение: {value}. Стек: {vm_instance.stack}")
             pc += 3
         elif A_OPCODE == 5: # gt: A=5, B=offset_val (6 бит) - Реализуем для полноты спецификации, хотя Этап 3 требует load, read, write
             # Согласно спецификации: val1 (снятый первым), val2 (снятый вторым), addr (снятый третьим)
@@ -102,46 +93,43 @@ def execute(bytecode, vm_instance): # идея из файла преподав�
             effective_addr = addr + offset_val
             result = 1 if val2 > val1 else 0 # идея из файла преподавателя: операции с памятью/регистром/стеком
             vm_instance.write_memory(effective_addr, result) # идея из файла преподавателя: операции с памятью/регистром/стеком
-            print(f"PC: {pc}, Executed: gt {offset_val}. Val2: {val2}, Val1: {val1}, Addr: {addr}, Offset: {offset_val}, Effective: {effective_addr}, Result: {result}. Memory[{effective_addr}] = {result}. Stack: {vm_instance.stack}")
+            print(f"PC: {pc}, Выполнена: gt {offset_val}. Val2: {val2}, Val1: {val1}, Addr: {addr}, Смещение: {offset_val}, Эфф. адрес: {effective_addr}, Результат: {result}. Memory[{effective_addr}] = {result}. Стек: {vm_instance.stack}")
             pc += 3
         else:
-            print(f"Error: Unknown opcode {A_OPCODE} at PC {pc}")
+            print(f"Ошибка: Неизвестный опкод {A_OPCODE} на PC {pc}")
             break # Прерываем выполнение при ошибке
 
-    print("Interpretation finished.")
-
-
-# --- ТОЧКА ВХОДА (MAIN) ---
+    print("Цикл интерпретации завершён.")
 
 def main():
-    parser = argparse.ArgumentParser(description="Interpreter for UVM Variant 20 (Stage 3).") # идея из файла преподавателя: CLI (хотя он читал файл напрямую)
-    parser.add_argument("binary_file", help="Path to the binary file with assembled program (.bin)")
-    parser.add_argument("dump_file", help="Path to the output file for memory dump (.json)")
-    parser.add_argument("start_addr", type=int, help="Start address for memory dump range")
-    parser.add_argument("end_addr", type=int, help="End address for memory dump range")
+    parser = argparse.ArgumentParser(description="Интерпретатор для УВМ Вариант 20 (Этап 3).") # идея из файла преподавателя: CLI (хотя он читал файл напрямую)
+    parser.add_argument("binary_file", help="Путь к бинарному файлу с ассемблированной программой (.bin)")
+    parser.add_argument("dump_file", help="Путь к файлу для сохранения дампа памяти (.json)")
+    parser.add_argument("start_addr", type=int, help="Начальный адрес для диапазона дампа памяти")
+    parser.add_argument("end_addr", type=int, help="Конечный адрес для диапазона дампа памяти")
 
     args = parser.parse_args()
 
     # Проверка корректности диапазона
     if args.start_addr < 0 or args.end_addr < args.start_addr or args.end_addr >= MEMORY_SIZE:
-        print(f"Error: Invalid memory range [{args.start_addr}, {args.end_addr}]. Must be 0 <= start <= end < {MEMORY_SIZE}.")
+        print(f"Ошибка: Неверный диапазон памяти [{args.start_addr}, {args.end_addr}]. Должно быть 0 <= start <= end < {MEMORY_SIZE}.")
         sys.exit(1)
 
-    print(f"Loading program from {args.binary_file}")
+    print(f"Загрузка программы из {args.binary_file}")
     try:
         with open(args.binary_file, 'rb') as f: # идея из файла преподавателя: чтение бинарного файла
             bytecode = f.read()
     except FileNotFoundError:
-        print(f"Error: Binary file '{args.binary_file}' not found.")
+        print(f"Ошибка: Бинарный файл '{args.binary_file}' не найден.")
         sys.exit(1)
 
-    print(f"Initializing UVM memory (size: {MEMORY_SIZE}) and stack.")
+    print(f"Инициализация памяти УВМ (размер: {MEMORY_SIZE}) и стека.")
     vm = UVM() # идея из файла преподавателя: инициализация состояния (вместо глобальных переменных)
 
     execute(bytecode, vm) # идея из файла преподавателя: вызов основной функции выполнения
 
     # Формирование дампа памяти в JSON # идея из файла преподавателя: вывод результата (хотя он просто печатал)
-    print(f"Dumping memory from {args.start_addr} to {args.end_addr} to {args.dump_file}")
+    print(f"Дамп памяти с {args.start_addr} по {args.end_addr} в {args.dump_file}")
     memory_dump = {}
     for addr in range(args.start_addr, min(args.end_addr + 1, len(vm.memory))): # идея из файла преподавателя: цикл по памяти для дампа
         memory_dump[str(addr)] = vm.memory[addr]
@@ -149,9 +137,9 @@ def main():
     try:
         with open(args.dump_file, 'w', encoding='utf-8') as f:
             json.dump(memory_dump, f, indent=2, ensure_ascii=False)
-        print(f"Memory dump saved to {args.dump_file}")
+        print(f"Дамп памяти сохранён в {args.dump_file}")
     except Exception as e:
-        print(f"Error saving memory dump: {e}")
+        print(f"Ошибка при сохранении дампа памяти: {e}")
         sys.exit(1)
 
 
