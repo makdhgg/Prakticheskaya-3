@@ -106,4 +106,4 @@ python interpr.py <binary_file.bin> <dump_file.json> <start_addr> <end_addr>
 
 ## Автор
 
-makdhgg
+makdhgg(Шалаев Даниил Викторович ИКБО-41-24)
