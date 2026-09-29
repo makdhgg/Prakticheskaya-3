@@ -103,7 +103,3 @@ python 12312312.py <input_file.csv> <output_file.bin> [--test-mode]
 ```bash
 python interpr.py <binary_file.bin> <dump_file.json> <start_addr> <end_addr>
 ```
-
-## Автор
-
-makdhgg(Шалаев Даниил Викторович ИКБО-41-24)
